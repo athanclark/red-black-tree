@@ -1,3 +1,8 @@
+{-# LANGUAGE
+    NamedFieldPuns
+  , RecordWildCards
+  #-}
+
 module Data.RedBlackTree.BinaryTree (
   BinaryTreeNode (mergeNodes),
   BinaryTree (Leaf, Branch),
@@ -13,7 +18,6 @@ module Data.RedBlackTree.BinaryTree (
   appendRightChild,
   binaryTreeInsert,
   binaryTreeFind,
-  branch2Tree,
   branchZipperInsert,
   getTreeRoot,
   goLeft,
@@ -70,9 +74,9 @@ data BranchType
 -- is the parent's node. The third argument is the sibling tree of the focused
 -- node.
 data TreeDirection a = TreeDirection
-  { treeDirectionType :: BranchType
+  { treeDirectionType  :: BranchType
   , treeDirectionValue :: a
-  , treeDirectionTree :: BinaryTree a
+  , treeDirectionTree  :: BinaryTree a
   } deriving (Show, Eq, Ord)
 
 -- List of @TreeDirection@
@@ -86,7 +90,7 @@ type TreeZipper a = (BinaryTree a, TreeDirections a)
 -- Holds the data of a @BinaryTree@ created with the @Branch@ constructor. Useful
 -- type when you want to guarantee that the element is not a @Leaf@
 data TreeBranch a = TreeBranch
-  { leftBranch :: BinaryTree a
+  { leftBranch  :: BinaryTree a
   , branchValue :: a
   , rightBranch :: BinaryTree a
   } deriving (Eq, Ord, Show)
@@ -128,68 +132,125 @@ data TreeInsertResult a
   deriving (Show, Eq)
 
 
-isLeftTreeDirection :: (BinaryTreeNode a) => TreeDirection a -> Bool
-isLeftTreeDirection (TreeDirection branchType _ _) = branchType == LeftBranch
+isLeftTreeDirection :: TreeDirection a -> Bool
+isLeftTreeDirection TreeDirection{treeDirectionType} = treeDirectionType == LeftBranch
 
-getTreeContent :: (BinaryTreeNode a) => BinaryTree a -> Maybe a
-getTreeContent (Branch (TreeBranch _ content _)) = Just content
+getTreeContent :: BinaryTree a -> Maybe a
+getTreeContent (Branch TreeBranch{branchValue}) = Just branchValue
 getTreeContent Leaf = Nothing
-
-branch2Tree :: (BinaryTreeNode a) => TreeBranch a -> BinaryTree a
-branch2Tree = Branch
 
 -- Move the zipper down to the left child, returns nothing if focused node is
 --  leaf
-goLeft :: (BinaryTreeNode a) => BranchZipper a -> TreeZipper a
-goLeft (TreeBranch leftChild treeNode rightChild, xs) =
-  (leftChild, TreeDirection LeftBranch treeNode rightChild:xs)
+goLeft :: BranchZipper a -> TreeZipper a
+goLeft (TreeBranch{..}, xs) =
+  ( leftBranch
+  , TreeDirection
+    { treeDirectionType  = LeftBranch
+    , treeDirectionValue = branchValue
+    , treeDirectionTree  = rightBranch
+    } : xs
+  )
 
 -- Move the zipper down to the right child, returns nothing if focused node is
 -- a leaf
-goRight :: (BinaryTreeNode a) => BranchZipper a -> TreeZipper a
-goRight (TreeBranch leftChild treeNode rightChild, xs) =
-  (rightChild, TreeDirection RightBranch treeNode leftChild:xs)
+goRight :: BranchZipper a -> TreeZipper a
+goRight (TreeBranch{..}, xs) =
+  ( rightBranch
+  , TreeDirection
+    { treeDirectionType  = RightBranch
+    , treeDirectionValue = branchValue
+    , treeDirectionTree  = leftBranch
+    } : xs
+  )
 
 -- get the parent of a branch given the direction from the parent to the branch
-reconstructAncestor :: (BinaryTreeNode a) => TreeBranch a -> TreeDirection a ->
-  TreeBranch a
-reconstructAncestor currentBranch (TreeDirection branchType parentContent
-  sibling) =
-  if branchType == LeftBranch
-    then TreeBranch currentTree parentContent sibling
-    else TreeBranch sibling parentContent currentTree
-    where currentTree = branch2Tree currentBranch
+reconstructAncestor :: TreeBranch a -> TreeDirection a -> TreeBranch a
+reconstructAncestor currentBranch
+  TreeDirection
+  { treeDirectionType
+  , treeDirectionValue = parentContent
+  , treeDirectionTree  = sibling
+  } = case treeDirectionType of
+  LeftBranch ->
+    TreeBranch
+    { leftBranch  = currentTree
+    , branchValue = parentContent
+    , rightBranch = sibling
+    }
+  RightBranch ->
+    TreeBranch
+    { leftBranch  = sibling
+    , branchValue = parentContent
+    , rightBranch = currentTree
+    }
+  where
+    currentTree = Branch currentBranch
 
 -- Move the zipper up to the parent, returns nothing directions list is empty
-goUp :: (BinaryTreeNode a) => BranchZipper a -> Maybe (BranchZipper a)
+goUp :: BranchZipper a -> Maybe (BranchZipper a)
 goUp (_, []) = Nothing
 goUp (currentBranch, direction:xs) =
   Just (reconstructAncestor currentBranch direction, xs)
 
-getTreeRoot :: (BinaryTreeNode a) => BranchZipper a -> BranchZipper a
+getTreeRoot :: BranchZipper a -> BranchZipper a
 getTreeRoot (branch, []) = (branch, [])
 getTreeRoot zipper = case goUp zipper of
   Just prevZipper -> getTreeRoot prevZipper
   Nothing -> zipper
 
-appendLeftChild :: (BinaryTreeNode a) => TreeBranch a -> a -> TreeInsertResult a
-appendLeftChild (TreeBranch leftChild treeContent rightChild) nodeToAppend =
-  if leftChild == Leaf then
-    InsertOk newBranch newDirection
-  else
-    InsertNotYet leftChild newDirection nodeToAppend
-  where newBranch = TreeBranch Leaf nodeToAppend Leaf
-        newDirection = TreeDirection LeftBranch treeContent rightChild
+appendLeftChild :: TreeBranch a -> a -> TreeInsertResult a
+appendLeftChild TreeBranch{leftBranch,branchValue,rightBranch} nodeToAppend = case leftBranch of
+  Leaf ->
+    InsertOk
+    { insertedTree = newBranch
+    , directionToNewTree = newDirection
+    }
+  _ ->
+    InsertNotYet
+    { obstructingTree = leftBranch
+    , directionToObstructingTree = newDirection
+    , nodeToInsert = nodeToAppend
+    }
+  where
+    newBranch =
+      TreeBranch
+      { leftBranch  = Leaf
+      , branchValue = nodeToAppend
+      , rightBranch = Leaf
+      }
+    newDirection =
+      TreeDirection
+      { treeDirectionType  = LeftBranch
+      , treeDirectionValue = branchValue
+      , treeDirectionTree  = rightBranch
+      }
 
-appendRightChild :: (BinaryTreeNode a) => TreeBranch a -> a ->
-  TreeInsertResult a
-appendRightChild (TreeBranch leftChild treeContent rightChild) nodeToAppend =
-  if rightChild == Leaf then
-    InsertOk newBranch newDirection
-  else
-    InsertNotYet rightChild newDirection nodeToAppend
-  where newBranch = TreeBranch Leaf nodeToAppend Leaf
-        newDirection = TreeDirection RightBranch treeContent leftChild
+appendRightChild :: TreeBranch a -> a -> TreeInsertResult a
+appendRightChild TreeBranch{leftBranch,branchValue,rightBranch} nodeToAppend = case rightBranch of
+  Leaf ->
+    InsertOk
+    { insertedTree = newBranch
+    , directionToNewTree = newDirection
+    }
+  _ ->
+    InsertNotYet
+    { obstructingTree = rightBranch
+    , directionToObstructingTree = newDirection
+    , nodeToInsert = nodeToAppend
+    }
+  where
+    newBranch =
+      TreeBranch
+      { leftBranch  = Leaf
+      , branchValue = nodeToAppend
+      , rightBranch = Leaf
+      }
+    newDirection =
+      TreeDirection
+      { treeDirectionType  = RightBranch
+      , treeDirectionValue = branchValue
+      , treeDirectionTree  = leftBranch
+      }
 
 
 appendWithMerge :: (BinaryTreeNode a) => TreeBranch a -> a ->

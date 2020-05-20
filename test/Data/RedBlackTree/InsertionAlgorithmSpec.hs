@@ -11,10 +11,10 @@ import Data.TestUtils
 {-# ANN module ("HLint: ignore Reduce duplication" :: String) #-}
 
 getLeftTree :: (BinaryTreeNode a) => RedBlackTree a -> RedBlackTree a
-getLeftTree (Branch leftChild content _) = leftChild
+getLeftTree (Branch (TreeBranch leftChild content _)) = leftChild
 
 getRightTree :: (BinaryTreeNode a) => RedBlackTree a -> RedBlackTree a
-getRightTree (Branch _ content rightChild) = rightChild
+getRightTree (Branch (TreeBranch _ content rightChild)) = rightChild
 
 case3FamilyAndExpectation :: (TreeFamily (RedBlackNode Int), RBTCase Int)
 case3FamilyAndExpectation = (treeFamily, expectedCase)
@@ -25,11 +25,11 @@ case3FamilyAndExpectation = (treeFamily, expectedCase)
         uncleNode = RedBlackNode Red 7
         newNode = RedBlackNode Red 1
         newBranch = TreeBranch Leaf newNode Leaf
-        newTree = branch2Tree newBranch
+        newTree = Branch newBranch
         parentBranch = TreeBranch newTree parentNode Leaf
         parentDirection = TreeDirection LeftBranch parentNode Leaf
-        uncleTree = Branch Leaf uncleNode Leaf
-        granduncleTree = Branch Leaf granduncleNode Leaf
+        uncleTree = Branch (TreeBranch Leaf uncleNode Leaf)
+        granduncleTree = Branch (TreeBranch Leaf granduncleNode Leaf)
         grandparentDirection = TreeDirection LeftBranch grandparentNode
                                  uncleTree
         rootDirection = TreeDirection LeftBranch rootNode granduncleTree
@@ -47,9 +47,9 @@ case4FamilyAndExpectation = (treeFamily, expectedCase)
         parentNode = RedBlackNode Red 3
         uncleNode = RedBlackNode Black 7
         newNode = RedBlackNode Red 4
-        newTree = branch2Tree newBranch
-        uncleTree = Branch Leaf uncleNode Leaf
-        granduncleTree = Branch Leaf granduncleNode Leaf
+        newTree = Branch newBranch
+        uncleTree = Branch (TreeBranch Leaf uncleNode Leaf)
+        granduncleTree = Branch (TreeBranch Leaf granduncleNode Leaf)
         parentDirection = TreeDirection RightBranch parentNode Leaf
         grandparentDirection = TreeDirection LeftBranch grandparentNode
                                  uncleTree
@@ -69,9 +69,9 @@ invertedCase4FamilyAndExpectation = (treeFamily, expectedCase)
         parentNode = RedBlackNode Red 7
         uncleNode = RedBlackNode Black 3
         newNode = RedBlackNode Red 6
-        newTree = branch2Tree newBranch
-        uncleTree = Branch Leaf uncleNode Leaf
-        granduncleTree = Branch Leaf granduncleNode Leaf
+        newTree = Branch newBranch
+        uncleTree = Branch (TreeBranch Leaf uncleNode Leaf)
+        granduncleTree = Branch (TreeBranch Leaf granduncleNode Leaf)
         parentDirection = TreeDirection LeftBranch parentNode Leaf
         grandparentDirection = TreeDirection RightBranch grandparentNode
                                  uncleTree
@@ -92,15 +92,15 @@ case5FamilyAndExpectation = (treeFamily, expectedCase)
         uncleNode = RedBlackNode Black 7
         newNode = RedBlackNode Red 1
         newBranch = TreeBranch Leaf newNode Leaf
-        newTree = branch2Tree newBranch
-        uncleTree = Branch Leaf uncleNode Leaf
-        granduncleTree = Branch Leaf granduncleNode Leaf
+        newTree = Branch newBranch
+        uncleTree = Branch (TreeBranch Leaf uncleNode Leaf)
+        granduncleTree = Branch (TreeBranch Leaf granduncleNode Leaf)
         parentDirection = TreeDirection LeftBranch parentNode Leaf
         grandparentDirection = TreeDirection LeftBranch grandparentNode
                                  uncleTree
         rootDirection = TreeDirection LeftBranch rootNode granduncleTree
         parentBranch = TreeBranch newTree parentNode Leaf
-        parentTree = branch2Tree parentBranch
+        parentTree = Branch parentBranch
         treeFamily = HasGrandparent [ rootDirection ] grandparentDirection
                        parentDirection newBranch
         whiteParent = WhiteBranch newTree 3 Leaf
@@ -116,15 +116,15 @@ invertedCase5FamilyAndExpectation = (treeFamily, expectedCase)
         uncleNode = RedBlackNode Black 3
         newNode = RedBlackNode Red 8
         newBranch = TreeBranch Leaf newNode Leaf
-        newTree = branch2Tree newBranch
-        uncleTree = Branch Leaf uncleNode Leaf
-        granduncleTree = Branch Leaf granduncleNode Leaf
+        newTree = Branch newBranch
+        uncleTree = Branch (TreeBranch Leaf uncleNode Leaf)
+        granduncleTree = Branch (TreeBranch Leaf granduncleNode Leaf)
         parentDirection = TreeDirection RightBranch parentNode Leaf
         grandparentDirection = TreeDirection RightBranch grandparentNode
                                  uncleTree
         rootDirection = TreeDirection LeftBranch rootNode granduncleTree
         parentBranch = TreeBranch Leaf parentNode newTree
-        parentTree = branch2Tree parentBranch
+        parentTree = Branch parentBranch
         treeFamily = HasGrandparent [ rootDirection ] grandparentDirection
                        parentDirection newBranch
         whiteParent = WhiteBranch Leaf 7 newTree
@@ -149,7 +149,7 @@ spec = do
       let leftNode = RedBlackNode Red 2
       let directionToChild = TreeDirection LeftBranch rootNode Leaf
       let leftChildBranch = TreeBranch Leaf leftNode Leaf
-      let leftChild = branch2Tree leftChildBranch
+      let leftChild = Branch leftChildBranch
       let treeFamily = HasParent directionToChild leftChildBranch
       let expectedCase = Case2 [] (TreeBranch leftChild rootNode Leaf)
 
@@ -165,11 +165,11 @@ spec = do
       let uncleNode = RedBlackNode Black 7
       let newNode = RedBlackNode Red 2
       let newBranch = TreeBranch Leaf newNode Leaf
-      let newTree = branch2Tree newBranch
+      let newTree = Branch newBranch
       let parentBranch = TreeBranch newTree parentNode Leaf
       let parentDirection = TreeDirection LeftBranch parentNode Leaf
-      let uncleTree = Branch Leaf uncleNode Leaf
-      let granduncleTree = Branch Leaf granduncleNode Leaf
+      let uncleTree = Branch (TreeBranch Leaf uncleNode Leaf)
+      let granduncleTree = Branch (TreeBranch Leaf granduncleNode Leaf)
       let grandparentDirection = TreeDirection LeftBranch grandparentNode
                                  uncleTree
       let rootDirection = TreeDirection LeftBranch rootNode granduncleTree
@@ -221,7 +221,7 @@ spec = do
     it "if node is inserted at root, it is painted black" $ do
       let tree = Leaf :: RedBlackTree Int
       let newItem = 1
-      let expectedTree = Branch Leaf (RedBlackNode Black 1) Leaf
+      let expectedTree = Branch (TreeBranch Leaf (RedBlackNode Black 1) Leaf)
       let modifiedTree = insert tree newItem
 
       modifiedTree `shouldBe` expectedTree
@@ -229,10 +229,10 @@ spec = do
 
     it "if inserted node lacks grandparent but parent is black, returns the root tree" $ do
       let rootNode = RedBlackNode Black 2 :: RedBlackNode Int
-      let rootTree = Branch Leaf rootNode Leaf
+      let rootTree = Branch (TreeBranch Leaf rootNode Leaf)
       let newItem = 1
-      let expectedInsertedTree = Branch Leaf (RedBlackNode Red 1) Leaf
-      let expectedTree = Branch expectedInsertedTree rootNode Leaf
+      let expectedInsertedTree = Branch (TreeBranch Leaf (RedBlackNode Red 1) Leaf)
+      let expectedTree = Branch (TreeBranch expectedInsertedTree rootNode Leaf)
 
       let newTree = insert rootTree newItem
       let newTreeLeftChild = getLeftTree newTree
@@ -243,12 +243,12 @@ spec = do
     it "if inserted node has grandparent but parent is black, returns the root tree" $ do
       let rootNode = RedBlackNode Black 4 :: RedBlackNode Int
       let parentNode = RedBlackNode Black 3
-      let parentTree = Branch Leaf parentNode Leaf
-      let rootTree = Branch parentTree rootNode Leaf
+      let parentTree = Branch (TreeBranch Leaf parentNode Leaf)
+      let rootTree = Branch (TreeBranch parentTree rootNode Leaf)
       let newItem = 2
-      let expectedInsertedTree = Branch Leaf (RedBlackNode Red 2) Leaf
-      let expectedParentTree = Branch expectedInsertedTree parentNode Leaf
-      let expectedTree = Branch expectedParentTree rootNode Leaf
+      let expectedInsertedTree = Branch (TreeBranch Leaf (RedBlackNode Red 2) Leaf)
+      let expectedParentTree = Branch (TreeBranch expectedInsertedTree parentNode Leaf)
+      let expectedTree = Branch (TreeBranch expectedParentTree rootNode Leaf)
 
       let newTree = insert rootTree newItem
       let insertedTree = (getLeftTree . getLeftTree) newTree
@@ -262,16 +262,15 @@ spec = do
       let uncleNode = RedBlackNode Black 7
       let siblingNode = RedBlackNode Black 1
 
-      let siblingTree = Branch Leaf siblingNode Leaf
-      let leftSubtree = Branch siblingTree parentNode Leaf
-      let rightSubtree = Branch Leaf uncleNode Leaf
+      let siblingTree = Branch (TreeBranch Leaf siblingNode Leaf)
+      let leftSubtree = Branch (TreeBranch siblingTree parentNode Leaf)
+      let rightSubtree = Branch (TreeBranch Leaf uncleNode Leaf)
 
-      let case4Tree = Branch leftSubtree grandparentNode rightSubtree
+      let case4Tree = Branch (TreeBranch leftSubtree grandparentNode rightSubtree)
 
-      let expectedLeftSubtree = Branch siblingTree (RedBlackNode Red 3) Leaf
-      let expectedRightSubtree = Branch Leaf (RedBlackNode Red 5) rightSubtree
-      let expectedTree = Branch expectedLeftSubtree (RedBlackNode Black 4)
-                         expectedRightSubtree
+      let expectedLeftSubtree = Branch (TreeBranch siblingTree (RedBlackNode Red 3) Leaf)
+      let expectedRightSubtree = Branch (TreeBranch Leaf (RedBlackNode Red 5) rightSubtree)
+      let expectedTree = Branch (TreeBranch expectedLeftSubtree (RedBlackNode Black 4) expectedRightSubtree)
 
       let newTree = insert case4Tree 4
 
@@ -288,16 +287,15 @@ spec = do
         let uncleNode = RedBlackNode Black 3
         let siblingNode = RedBlackNode Black 8
 
-        let siblingTree = Branch Leaf siblingNode Leaf
-        let leftSubtree = Branch Leaf uncleNode Leaf
-        let rightSubtree = Branch Leaf parentNode siblingTree
+        let siblingTree = Branch (TreeBranch Leaf siblingNode Leaf)
+        let leftSubtree = Branch (TreeBranch Leaf uncleNode Leaf)
+        let rightSubtree = Branch (TreeBranch Leaf parentNode siblingTree)
 
-        let invertedCase4Tree = Branch leftSubtree grandparentNode rightSubtree
+        let invertedCase4Tree = Branch (TreeBranch leftSubtree grandparentNode rightSubtree)
 
-        let expectedLeftSubtree = Branch leftSubtree (RedBlackNode Red 5) Leaf
-        let expectedRightSubtree = Branch Leaf (RedBlackNode Red 7) siblingTree
-        let expectedTree = Branch expectedLeftSubtree (RedBlackNode Black 6)
-                           expectedRightSubtree
+        let expectedLeftSubtree = Branch (TreeBranch leftSubtree (RedBlackNode Red 5) Leaf)
+        let expectedRightSubtree = Branch (TreeBranch Leaf (RedBlackNode Red 7) siblingTree)
+        let expectedTree = Branch (TreeBranch expectedLeftSubtree (RedBlackNode Black 6) expectedRightSubtree)
 
         let newTree = insert invertedCase4Tree 6
 
@@ -313,15 +311,14 @@ spec = do
         let parentNode = RedBlackNode Red 3
         let uncleNode = RedBlackNode Black 7
 
-        let leftSubtree = Branch Leaf parentNode Leaf
-        let rightSubtree = Branch Leaf uncleNode Leaf
+        let leftSubtree = Branch (TreeBranch Leaf parentNode Leaf)
+        let rightSubtree = Branch (TreeBranch Leaf uncleNode Leaf)
 
-        let case5Tree = Branch leftSubtree grandparentNode rightSubtree
+        let case5Tree = Branch (TreeBranch leftSubtree grandparentNode rightSubtree)
 
-        let expectedLeftSubtree = Branch Leaf (RedBlackNode Red 1) Leaf
-        let expectedRightSubtree = Branch Leaf (RedBlackNode Red 5) rightSubtree
-        let expectedTree = Branch expectedLeftSubtree (RedBlackNode Black 3)
-                           expectedRightSubtree
+        let expectedLeftSubtree = Branch (TreeBranch Leaf (RedBlackNode Red 1) Leaf)
+        let expectedRightSubtree = Branch (TreeBranch Leaf (RedBlackNode Red 5) rightSubtree)
+        let expectedTree = Branch (TreeBranch expectedLeftSubtree (RedBlackNode Black 3) expectedRightSubtree)
 
         let newTree = insert case5Tree 1
 
@@ -337,15 +334,14 @@ spec = do
         let parentNode = RedBlackNode Red 7
         let uncleNode = RedBlackNode Black 3
 
-        let leftSubtree = Branch Leaf uncleNode Leaf
-        let rightSubtree = Branch Leaf parentNode Leaf
+        let leftSubtree = Branch (TreeBranch Leaf uncleNode Leaf)
+        let rightSubtree = Branch (TreeBranch Leaf parentNode Leaf)
 
-        let invertedCase5Tree = Branch leftSubtree grandparentNode rightSubtree
+        let invertedCase5Tree = Branch (TreeBranch leftSubtree grandparentNode rightSubtree)
 
-        let expectedLeftSubtree = Branch leftSubtree (RedBlackNode Red 5) Leaf
-        let expectedRightSubtree = Branch Leaf (RedBlackNode Red 8) Leaf
-        let expectedTree = Branch expectedLeftSubtree (RedBlackNode Black 7)
-                           expectedRightSubtree
+        let expectedLeftSubtree = Branch (TreeBranch leftSubtree (RedBlackNode Red 5) Leaf)
+        let expectedRightSubtree = Branch (TreeBranch Leaf (RedBlackNode Red 8) Leaf)
+        let expectedTree = Branch (TreeBranch expectedLeftSubtree (RedBlackNode Black 7) expectedRightSubtree)
 
         let newTree = insert invertedCase5Tree 8
 

@@ -103,7 +103,7 @@ handleRBTCase1 whiteRoot = Branch (TreeBranch leftChild rootNode rightChild)
 
 handleRBTCase2 :: (BinaryTreeNode a) => RedBlackDirections a -> RedBlackBranch a
   -> RedBlackTree a
-handleRBTCase2 directionsFromRoot newBranch = branch2Tree rootBranch
+handleRBTCase2 directionsFromRoot newBranch = Branch rootBranch
   where branchZipper = (newBranch, directionsFromRoot)
         (rootBranch, _) = getTreeRoot branchZipper
 
@@ -148,13 +148,13 @@ handleRBTCase5 :: (BinaryTreeNode a) =>
   RedBlackTree a
 handleRBTCase5 directions grandparentDirection parentContent
   siblingTree latestBranch =
-  branch2Tree postRotationRootBranch
+  Branch postRotationRootBranch
   where TreeDirection grandparentDirectionType grandparentNode uncleTree =
           grandparentDirection
         RedBlackNode _ grandparentContent = grandparentNode
         newTopNode = RedBlackNode Black parentContent
         rotatedGrandparentNode = RedBlackNode Red grandparentContent
-        latestTree = branch2Tree latestBranch
+        latestTree = Branch latestBranch
         needsRightRotation = grandparentDirectionType == LeftBranch
         newSiblingTree = if needsRightRotation
           then Branch (TreeBranch siblingTree rotatedGrandparentNode uncleTree)
@@ -191,5 +191,5 @@ insert tree newItem = if insertedNode `isColor` Black
         TreeBranch _ insertedNode _ = insertedTreeBranch
         insertedBranchZipper = (insertedTreeBranch, directions)
         (rootBranch, _) = getTreeRoot insertedBranchZipper
-        newTreeWithNewItem = branch2Tree rootBranch
+        newTreeWithNewItem = Branch rootBranch
         insertedTreeFamily = getTreeFamily insertedBranchZipper

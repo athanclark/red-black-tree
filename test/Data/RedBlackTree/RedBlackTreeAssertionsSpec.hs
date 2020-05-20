@@ -14,22 +14,22 @@ spec =
     let rightSubtreeNode = RedBlackNode Red 3 :: RedBlackNode Int
 
     it "throws error if tree is not sorted correctly" $ do
-      let leftSubtree = Branch Leaf leftSubtreeNode Leaf
-      let rightSubtree = Branch Leaf rightSubtreeNode Leaf
-      let tree = Branch leftSubtree (RedBlackNode Black 4) rightSubtree
+      let leftSubtree = Branch (TreeBranch Leaf leftSubtreeNode Leaf)
+      let rightSubtree = Branch (TreeBranch Leaf rightSubtreeNode Leaf)
+      let tree = Branch (TreeBranch leftSubtree (RedBlackNode Black 4) rightSubtree)
 
       assertRedBlackTreeProperties tree 2 `shouldThrow` anyException
 
     it "throws error if a red tree has red children" $ do
-      let leftSubtree = Branch Leaf leftSubtreeNode Leaf
-      let rightSubtree = Branch Leaf rightSubtreeNode Leaf
-      let tree = Branch leftSubtree (RedBlackNode Red 2) rightSubtree
+      let leftSubtree = Branch (TreeBranch Leaf leftSubtreeNode Leaf)
+      let rightSubtree = Branch (TreeBranch Leaf rightSubtreeNode Leaf)
+      let tree = Branch (TreeBranch leftSubtree (RedBlackNode Red 2) rightSubtree)
 
       assertRedBlackTreeProperties tree 2 `shouldThrow` anyException
     it "throws error if not all paths have the same black depth" $ do
       let wrongRightSubtreeNode = RedBlackNode Black 3 :: RedBlackNode Int
-      let leftSubtree = Branch Leaf leftSubtreeNode Leaf
-      let rightSubtree = Branch Leaf wrongRightSubtreeNode Leaf
-      let tree = Branch leftSubtree (RedBlackNode Black 2) rightSubtree
+      let leftSubtree = Branch (TreeBranch Leaf leftSubtreeNode Leaf)
+      let rightSubtree = Branch (TreeBranch Leaf wrongRightSubtreeNode Leaf)
+      let tree = Branch (TreeBranch leftSubtree (RedBlackNode Black 2) rightSubtree)
 
       assertRedBlackTreeProperties tree 2 `shouldThrow` anyException

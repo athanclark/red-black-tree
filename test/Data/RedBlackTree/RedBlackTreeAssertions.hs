@@ -11,12 +11,12 @@ import Data.RedBlackTree.Internal
 assertBranchIsSorted :: (BinaryTreeNode a, Show a) => TreeBranch a ->
   Expectation
 assertBranchIsSorted (TreeBranch Leaf _ Leaf) = return ()
-assertBranchIsSorted (TreeBranch (Branch _ leftContent _) content Leaf) =
+assertBranchIsSorted (TreeBranch (Branch (TreeBranch _ leftContent _)) content Leaf) =
   leftContent `shouldSatisfy` (< content)
-assertBranchIsSorted (TreeBranch Leaf content (Branch _ rightContent _)) =
+assertBranchIsSorted (TreeBranch Leaf content (Branch (TreeBranch _ rightContent _))) =
   rightContent `shouldSatisfy` (> content)
-assertBranchIsSorted (TreeBranch (Branch _ leftContent _) content
-  (Branch _ rightContent _)) = do
+assertBranchIsSorted (TreeBranch (Branch (TreeBranch _ leftContent _)) content
+  (Branch (TreeBranch _ rightContent _))) = do
   leftContent `shouldSatisfy` (< content)
   rightContent `shouldSatisfy` (> content)
 
@@ -39,7 +39,7 @@ assertRedBlackTreeProperties':: (BinaryTreeNode a, Show a) => RedBlackTree a ->
   Int -> Int -> Expectation
 assertRedBlackTreeProperties' Leaf expectedBlackHeight currentBlackDepth =
   currentBlackDepth + 1 `shouldBe` expectedBlackHeight
-assertRedBlackTreeProperties' (Branch leftSubtree node rightSubtree)
+assertRedBlackTreeProperties' (Branch (TreeBranch leftSubtree node rightSubtree))
   expectedBlackHeight currentBlackDepth = do
   let currentBranch = TreeBranch leftSubtree node rightSubtree
   assertBranchIsSorted currentBranch
@@ -55,5 +55,5 @@ assertRedBlackTreeProperties tree expectedBlackHeight = do
 -- RedBlackNode's Eq instance is colorblind, so we need to test color separately
 shouldBeColor :: (BinaryTreeNode a) => RedBlackTree a -> RedBlack -> Expectation
 shouldBeColor Leaf expectedColor = Black `shouldBe` expectedColor
-shouldBeColor (Branch _ (RedBlackNode color content) _) expectedColor =
+shouldBeColor (Branch (TreeBranch _ (RedBlackNode color content) _)) expectedColor =
   color `shouldBe` expectedColor
