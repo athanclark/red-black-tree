@@ -40,32 +40,40 @@ class (Ord a) => BinaryTreeNode a where
 
 -- A BinaryTree is either a leaf (empty) or a @BinaryTreeNode@ with 2
 -- @BinaryTree@ children, left and right
-data BinaryTree a = Leaf | Branch (BinaryTree a) a (BinaryTree a)
-  deriving (Eq, Ord)
+data BinaryTree a
+  = Leaf
+  | Branch (TreeBranch a)
+  deriving (Eq, Ord, Show)
 
-instance (BinaryTreeNode a, Show a) => Show (BinaryTree a) where
-  show tree = prettyPrintTree tree 0
-    where
-      addSpaces num = replicate num ' '
-      prettyPrintTree Leaf spaces = " Leaf"
-      prettyPrintTree (Branch leftTree content rightTree) spaces =
-        " " ++ show content ++ "\n" ++
-        identation ++ "L:" ++ prettyPrintSubtree leftTree ++
-        identation ++ "R:" ++ prettyPrintSubtree rightTree
-        where identation = addSpaces (spaces + 2)
-              prettyPrintSubtree subtree =  prettyPrintTree subtree (spaces + 2)
-                ++ "\n"
+-- instance (BinaryTreeNode a, Show a) => Show (BinaryTree a) where
+--   show tree = prettyPrintTree tree 0
+--     where
+--       addSpaces num = replicate num ' '
+--       prettyPrintTree Leaf spaces = " Leaf"
+--       prettyPrintTree (Branch leftTree content rightTree) spaces =
+--         " " ++ show content ++ "\n" ++
+--         identation ++ "L:" ++ prettyPrintSubtree leftTree ++
+--         identation ++ "R:" ++ prettyPrintSubtree rightTree
+--         where identation = addSpaces (spaces + 2)
+--               prettyPrintSubtree subtree =  prettyPrintTree subtree (spaces + 2)
+--                 ++ "\n"
 
 
 -- A BinaryTree can only have two types of branches: Left or Right
-data BranchType = LeftBranch | RightBranch deriving (Show, Eq, Ord)
+data BranchType
+  = LeftBranch
+  | RightBranch
+  deriving (Show, Eq, Ord)
 
 -- Minimum necessary to reconstruct the parent of any focused node. First argument
 -- is the @BranchType@ of the focused node relative to the parent. Second argument
 -- is the parent's node. The third argument is the sibling tree of the focused
 -- node.
-data TreeDirection a = TreeDirection BranchType a (BinaryTree a)
-  deriving (Show, Eq, Ord)
+data TreeDirection a = TreeDirection
+  { treeDirectionType :: BranchType
+  , treeDirectionValue :: a
+  , treeDirectionTree :: BinaryTree a
+  } deriving (Show, Eq, Ord)
 
 -- List of @TreeDirection@
 type TreeDirections a = [TreeDirection a]
@@ -77,12 +85,21 @@ type TreeZipper a = (BinaryTree a, TreeDirections a)
 
 -- Holds the data of a @BinaryTree@ created with the @Branch@ constructor. Useful
 -- type when you want to guarantee that the element is not a @Leaf@
-data TreeBranch a = TreeBranch (BinaryTree a) a (BinaryTree a)
-  deriving (Eq, Ord)
+data TreeBranch a = TreeBranch
+  { leftBranch :: BinaryTree a
+  , branchValue :: a
+  , rightBranch :: BinaryTree a
+  } deriving (Eq, Ord, Show)
 
-instance (BinaryTreeNode a, Show a) => Show (TreeBranch a) where
-  show (TreeBranch leftChild content rightChild) =
-    show (Branch leftChild content rightChild)
+-- instance (BinaryTreeNode a, Show a) => Show (TreeBranch a) where
+--   show TreeBranch{..} =
+--     " " ++ show branchValue ++ "\n" ++
+--     identation ++ "L:" ++ prettyPrintSubtree leftBranch ++
+--     identation ++ "R:" ++ prettyPrintSubtree rightBranch
+--   where
+--     addSpaces num = replicate num ' '
+--     identation = addSpaces (spaces + 2)
+--     prettyPrintSubtree subtree = prettyPrintTree subtree (spaces + 2) ++ "\n"
 
 -- A @TreeBranch@ zipper. It is identical to @TreeZipper@ except for the fact
 -- that @Leaf@ values are not allowed in the zipper.
@@ -95,10 +112,19 @@ type BranchZipper a = (TreeBranch a, TreeDirections a)
 -- already is a tree obstructing the desired position, we must go further down
 -- InsertMerge the node to insert is equal to the tree's node so they were merged
 -- and the tree's size remains the same
-data TreeInsertResult a =
-  InsertOk (TreeBranch a) (TreeDirection a)
-  | InsertNotYet (BinaryTree a) (TreeDirection a) a
-  | InsertMerge (TreeBranch a)
+data TreeInsertResult a
+  = InsertOk
+    { insertedTree :: TreeBranch a
+    , directionToNewTree :: TreeDirection a
+    }
+  | InsertNotYet
+    { obstructingTree :: BinaryTree a
+    , directionToObstructingTree :: TreeDirection a
+    , nodeToInsert :: a
+    }
+  | InsertMerge
+    { mergedBranch :: TreeBranch a
+    }
   deriving (Show, Eq)
 
 
@@ -106,12 +132,11 @@ isLeftTreeDirection :: (BinaryTreeNode a) => TreeDirection a -> Bool
 isLeftTreeDirection (TreeDirection branchType _ _) = branchType == LeftBranch
 
 getTreeContent :: (BinaryTreeNode a) => BinaryTree a -> Maybe a
-getTreeContent (Branch _ content _) = Just content
+getTreeContent (Branch (TreeBranch _ content _)) = Just content
 getTreeContent Leaf = Nothing
 
 branch2Tree :: (BinaryTreeNode a) => TreeBranch a -> BinaryTree a
-branch2Tree (TreeBranch leftChild content rightChild) =
-  Branch leftChild content rightChild
+branch2Tree = Branch
 
 -- Move the zipper down to the left child, returns nothing if focused node is
 --  leaf
@@ -186,7 +211,7 @@ insertOrGoDown treeDirections (InsertNotYet existingChild directionToChild
 
 branchZipperToTreeZipper :: (BinaryTreeNode a) => BranchZipper a -> TreeZipper a
 branchZipperToTreeZipper (TreeBranch leftChild content rightChild, xs) =
-  (Branch leftChild content rightChild, xs)
+  (Branch (TreeBranch leftChild content rightChild), xs)
 
 branchZipperInsert :: (BinaryTreeNode a) => BranchZipper a -> a ->
   BranchZipper a
@@ -201,7 +226,7 @@ branchZipperInsert (TreeBranch leftChild treeNode rightChild, xs) newNode =
 
 treeZipperInsert :: (BinaryTreeNode a) => TreeZipper a -> a -> BranchZipper a
 treeZipperInsert (Leaf, xs) newNode = (TreeBranch Leaf newNode Leaf, xs)
-treeZipperInsert (Branch leftChild treeNode rightChild, xs) newNode =
+treeZipperInsert (Branch (TreeBranch leftChild treeNode rightChild), xs) newNode =
   branchZipperInsert (TreeBranch leftChild treeNode rightChild, xs) newNode
 
   -- | inserts an item to the binary tree. Returns a BranchZipper focusing
@@ -213,7 +238,7 @@ binaryTreeInsert tree = treeZipperInsert treeZipper
   -- | Looks up an item in the binary tree. Returns Nothing if it was not found.
 binaryTreeFind :: (BinaryTreeNode a) => BinaryTree a -> a -> Maybe a
 binaryTreeFind Leaf _ = Nothing
-binaryTreeFind (Branch leftTree content rightTree) target
+binaryTreeFind (Branch (TreeBranch leftTree content rightTree)) target
   | target == content = Just content
   | target < content = binaryTreeFind leftTree target
   | target > content = binaryTreeFind rightTree target

@@ -54,7 +54,7 @@ identifyCases345 :: (BinaryTreeNode a) => RedBlackDirections a ->
   RedBlackDirection a -> RedBlackDirection a -> RedBlackBranch a -> RBTCase a
 identifyCases345 directions
   (TreeDirection grandparentBranchType grandparentNode
-  (Branch leftCousin (RedBlackNode Red uncleContent) rightCousin))
+  (Branch (TreeBranch leftCousin (RedBlackNode Red uncleContent) rightCousin)))
   parentDirection newBranch =
     case grandparentBranchType of
       LeftBranch ->
@@ -65,7 +65,7 @@ identifyCases345 directions
         uncleBranch = TreeBranch leftCousin uncleNode rightCousin
         parentBranch = reconstructAncestor newBranch parentDirection
         grandparentDirection = TreeDirection grandparentBranchType
-          grandparentNode (Branch leftCousin uncleNode rightCousin)
+          grandparentNode (Branch (TreeBranch leftCousin uncleNode rightCousin))
         RedBlackNode _ grandparentContent = grandparentNode
         whiteUncle = removeBranchColor uncleBranch
         whiteParent = removeBranchColor parentBranch
@@ -97,7 +97,7 @@ identifyRBTCase (HasGrandparent directions grandparentDirection
         TreeBranch _ grandparentContent _ = grandparentBranch
 
 handleRBTCase1 :: (BinaryTreeNode a) => WhiteBranch a -> RedBlackTree a
-handleRBTCase1 whiteRoot = Branch leftChild rootNode rightChild
+handleRBTCase1 whiteRoot = Branch (TreeBranch leftChild rootNode rightChild)
   where WhiteBranch leftChild content rightChild = whiteRoot
         rootNode = RedBlackNode Black content
 
@@ -157,8 +157,8 @@ handleRBTCase5 directions grandparentDirection parentContent
         latestTree = branch2Tree latestBranch
         needsRightRotation = grandparentDirectionType == LeftBranch
         newSiblingTree = if needsRightRotation
-          then Branch siblingTree rotatedGrandparentNode uncleTree
-          else Branch uncleTree rotatedGrandparentNode siblingTree
+          then Branch (TreeBranch siblingTree rotatedGrandparentNode uncleTree)
+          else Branch (TreeBranch uncleTree rotatedGrandparentNode siblingTree)
         rotatedBranch = if needsRightRotation
           then TreeBranch latestTree newTopNode newSiblingTree
           else TreeBranch newSiblingTree newTopNode latestTree

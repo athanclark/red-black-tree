@@ -78,7 +78,7 @@ branchIsColor (TreeBranch leftChild node rightChild) = isColor node
 
 treeIsColor :: (BinaryTreeNode a) => RedBlackTree a -> RedBlack -> Bool
 treeIsColor Leaf expectedColor = expectedColor == Black
-treeIsColor (Branch leftChild node rightChild) expectedColor =
+treeIsColor (Branch (TreeBranch leftChild node rightChild)) expectedColor =
   isColor node expectedColor
 
 paintItBlack :: (BinaryTreeNode a) => RedBlackNode a -> RedBlackNode a
@@ -91,14 +91,14 @@ removeBranchColor (TreeBranch leftChild (RedBlackNode _ content) rightChild) =
 whiteBranch2Tree :: (BinaryTreeNode a) => WhiteBranch a -> RedBlack ->
   RedBlackTree a
 whiteBranch2Tree (WhiteBranch leftChild content rightChild) color =
-  Branch leftChild newNode rightChild
+  Branch (TreeBranch leftChild newNode rightChild)
   where newNode = RedBlackNode color content
 
 getBlackHeight :: (BinaryTreeNode a) => RedBlackTree a -> Int
 getBlackHeight Leaf = 1
-getBlackHeight (Branch _ (RedBlackNode Black _) rightSubtree) =
+getBlackHeight (Branch (TreeBranch _ (RedBlackNode Black _) rightSubtree)) =
   1 + getBlackHeight rightSubtree
-getBlackHeight (Branch _ (RedBlackNode Red _) rightSubtree) =
+getBlackHeight (Branch (TreeBranch _ (RedBlackNode Red _) rightSubtree)) =
   getBlackHeight rightSubtree
 
 getNodeContent :: (BinaryTreeNode a) => RedBlackNode a -> a
