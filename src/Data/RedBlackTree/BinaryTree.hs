@@ -253,53 +253,61 @@ appendRightChild TreeBranch{leftBranch,branchValue,rightBranch} nodeToAppend = c
       }
 
 
-appendWithMerge :: (BinaryTreeNode a) => TreeBranch a -> a ->
-  TreeInsertResult a
-appendWithMerge (TreeBranch leftChild treeNode rightChild) nodeToAppend =
-  InsertMerge (TreeBranch leftChild mergedNode rightChild)
-  where mergedNode = mergeNodes treeNode nodeToAppend
+appendWithMerge :: BinaryTreeNode a => TreeBranch a -> a -> TreeInsertResult a
+appendWithMerge TreeBranch{..} nodeToAppend =
+  InsertMerge
+    TreeBranch
+    { leftBranch
+    , branchValue = mergedNode
+    , rightBranch
+    }
+  where
+    mergedNode = mergeNodes branchValue nodeToAppend
 
-insertOrGoDown :: (BinaryTreeNode a) => TreeDirections a -> TreeInsertResult a
-  -> BranchZipper a
-insertOrGoDown treeDirections (InsertMerge newBranch) =
-  (newBranch, treeDirections)
-insertOrGoDown treeDirections (InsertOk newBranch newDirection) =
-  (newBranch, newDirection:treeDirections)
-insertOrGoDown treeDirections (InsertNotYet existingChild directionToChild
-  childToInsert) =
-  treeZipperInsert (existingChild, directionToChild:treeDirections)
-    childToInsert
+insertOrGoDown :: BinaryTreeNode a => TreeDirections a -> TreeInsertResult a -> BranchZipper a
+insertOrGoDown treeDirections InsertMerge{mergedBranch} =
+  (mergedBranch, treeDirections)
+insertOrGoDown treeDirections InsertOk{insertedTree,directionToNewTree} =
+  (insertedTree, directionToNewTree:treeDirections)
+insertOrGoDown treeDirections InsertNotYet{..} =
+  treeZipperInsert (obstructingTree, directionToObstructingTree:treeDirections) nodeToInsert
 
-branchZipperToTreeZipper :: (BinaryTreeNode a) => BranchZipper a -> TreeZipper a
-branchZipperToTreeZipper (TreeBranch leftChild content rightChild, xs) =
-  (Branch (TreeBranch leftChild content rightChild), xs)
+branchZipperToTreeZipper :: BranchZipper a -> TreeZipper a
+branchZipperToTreeZipper (branch, xs) = (Branch branch, xs)
 
-branchZipperInsert :: (BinaryTreeNode a) => BranchZipper a -> a ->
-  BranchZipper a
-branchZipperInsert (TreeBranch leftChild treeNode rightChild, xs) newNode =
+branchZipperInsert :: BinaryTreeNode a => BranchZipper a -> a -> BranchZipper a
+branchZipperInsert (focusedBranch@TreeBranch{branchValue}, xs) newNode =
   insertOrGoDown xs (appendFunction focusedBranch newNode)
   where
-    focusedBranch = TreeBranch leftChild treeNode rightChild
     appendFunction
-      | newNode < treeNode = appendLeftChild
-      | newNode > treeNode = appendRightChild
+      | newNode < branchValue = appendLeftChild
+      | newNode > branchValue = appendRightChild
       | otherwise = appendWithMerge
 
-treeZipperInsert :: (BinaryTreeNode a) => TreeZipper a -> a -> BranchZipper a
-treeZipperInsert (Leaf, xs) newNode = (TreeBranch Leaf newNode Leaf, xs)
-treeZipperInsert (Branch (TreeBranch leftChild treeNode rightChild), xs) newNode =
-  branchZipperInsert (TreeBranch leftChild treeNode rightChild, xs) newNode
+treeZipperInsert :: BinaryTreeNode a => TreeZipper a -> a -> BranchZipper a
+treeZipperInsert (tree, xs) newNode = case tree of
+  Leaf ->
+    ( TreeBranch
+      { leftBranch = Leaf
+      , branchValue = newNode
+      , rightBranch = Leaf
+      }
+    , xs
+    )
+  Branch branch ->
+    branchZipperInsert (branch, xs) newNode
 
   -- | inserts an item to the binary tree. Returns a BranchZipper focusing
   -- on the recently inserted branch.
-binaryTreeInsert :: (BinaryTreeNode a) => BinaryTree a -> a -> BranchZipper a
+binaryTreeInsert :: BinaryTreeNode a => BinaryTree a -> a -> BranchZipper a
 binaryTreeInsert tree = treeZipperInsert treeZipper
-  where treeZipper = (tree, [])
+  where
+    treeZipper = (tree, [])
 
   -- | Looks up an item in the binary tree. Returns Nothing if it was not found.
-binaryTreeFind :: (BinaryTreeNode a) => BinaryTree a -> a -> Maybe a
+binaryTreeFind :: BinaryTreeNode a => BinaryTree a -> a -> Maybe a
 binaryTreeFind Leaf _ = Nothing
-binaryTreeFind (Branch (TreeBranch leftTree content rightTree)) target
-  | target == content = Just content
-  | target < content = binaryTreeFind leftTree target
-  | target > content = binaryTreeFind rightTree target
+binaryTreeFind (Branch TreeBranch{..}) target
+  | target == branchValue = Just branchValue
+  | target <  branchValue = binaryTreeFind leftBranch target
+  | target >  branchValue = binaryTreeFind rightBranch target
