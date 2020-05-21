@@ -33,7 +33,7 @@ import Data.RedBlackTree.BinaryTree
 -- | Red black trees can only have two types of nodes: Red and Black
 data RedBlack = Red | Black deriving (Show, Eq, Ord)
 
--- | a @RedBlackNode@ contains only two elements, the color of the node and the
+-- | a 'RedBlackNode' contains only two elements, the color of the node and the
 -- actual content.
 data RedBlackNode a = RedBlackNode
   { nodeColor :: RedBlack
@@ -52,35 +52,35 @@ instance (BinaryTreeNode a) => BinaryTreeNode (RedBlackNode a)  where
     where
       mergedContent = leftContent `mergeNodes` rightContent
 
-instance (BinaryTreeNode a) => Ord (RedBlackNode a) where
+instance (Ord a) => Ord (RedBlackNode a) where
   (RedBlackNode _ lcontent) <= (RedBlackNode _ rcontent) =
     lcontent <= rcontent
 
-instance (BinaryTreeNode a) => Eq (RedBlackNode a) where
+instance (Ord a) => Eq (RedBlackNode a) where
   (RedBlackNode _ lcontent) == (RedBlackNode _ rcontent) =
     lcontent == rcontent
 
 
 
--- | A @BinaryTree@ with only nodes of type @RedBlackNode. is either a leaf
--- (empty) or a @RedBlackNode@ with 2 @RedBlackTree@ children, left and right
+-- | A 'BinaryTree' with only nodes of type @RedBlackNode. is either a leaf
+-- (empty) or a 'RedBlackNode' with 2 'RedBlackTree' children, left and right
 type RedBlackTree a = BinaryTree (RedBlackNode a)
 
--- A @TreeBranch@ with only nodes of type @RedBlackNode. Holds the data of a
--- @RedBlackTree@ created with the @Branch@ constructor. Useful
--- type when you want to guarantee that the element is not a @Leaf@
+-- | A 'TreeBranch' with only nodes of type @RedBlackNode. Holds the data of a
+-- 'RedBlackTree' created with the 'Branch' constructor. Useful
+-- type when you want to guarantee that the element is not a 'Leaf'
 type RedBlackBranch a = TreeBranch (RedBlackNode a)
 
--- @TreeDirection@ for trees of type @RedBlackTree@. Minimum necessary to
--- reconstruct the parent of any focused node. First argument is the @BranchType@
+-- | 'TreeDirection' for trees of type 'RedBlackTree'. Minimum necessary to
+-- reconstruct the parent of any focused node. First argument is the 'BranchType'
 -- of the focused node relative to the parent. Second argument is the parent's
 -- node. The third argument is the sibling tree of the focused node.
 type RedBlackDirection a = TreeDirection (RedBlackNode a)
 
--- List of @RedBlackDirection@
+-- | List of 'RedBlackDirection'
 type RedBlackDirections a = [ RedBlackDirection a ]
 
--- Holds all the data of a @RedBlackBranch@ except for the color of the node
+-- | Holds all the data of a 'RedBlackBranch' except for the color of the node
 -- at the top of the branch
 data WhiteBranch a = WhiteBranch
   { leftWhiteBranch  :: RedBlackTree a
@@ -131,9 +131,9 @@ getBlackHeight tree = case tree of
 
 -- | Lookup a target node in the tree. The target value doesn't need to be the
 -- exact same value that is already in the tree. It only needs to satisfy the
--- @Eq@ instance
+-- 'Eq' instance
 find :: Ord a => RedBlackTree a -> a -> Maybe a
-find tree target = fmap content (binaryTreeFind tree RedBlackNode{nodeColor=Black,content=target})
+find tree target = content <$> binaryTreeFind tree RedBlackNode{nodeColor=Black,content=target}
 
 -- | Convenient function to "create" a new empty tree.
 emptyRedBlackTree :: RedBlackTree a

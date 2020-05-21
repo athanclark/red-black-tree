@@ -28,12 +28,12 @@ module Data.RedBlackTree.BinaryTree (
 
 
 
--- Only types that are members of @BinaryTreeNode@ can be inserted into a
--- @BinaryTree@. The purpose of the class is to provide a method to merge nodes
+-- | Only types that are members of 'BinaryTreeNode' can be inserted into a
+-- 'BinaryTree'. The purpose of the class is to provide a method to merge nodes
 -- with equal values since inserting different nodes with equal values can
 -- corrupt the tree.
 class (Ord a) => BinaryTreeNode a where
-  -- The @BinaryTree@ will call this function when it tries to insert a value
+  -- | The 'BinaryTree' will call this function when it tries to insert a value
   -- that already exists in the tree. The first argument is guaranteed to be the
   -- one that is already in the tree, while the second argument is the node that
   -- the tree is trying to insert. Since the two nodes can't exist in the same tree
@@ -41,8 +41,8 @@ class (Ord a) => BinaryTreeNode a where
   -- other two.
   mergeNodes :: a -> a -> a
 
--- A BinaryTree is either a leaf (empty) or a @BinaryTreeNode@ with 2
--- @BinaryTree@ children, left and right
+-- | A BinaryTree is either a leaf (empty) or a 'BinaryTreeNode' with 2
+-- 'BinaryTree' children, left and right
 data BinaryTree a
   = Leaf
   | Branch (TreeBranch a)
@@ -62,32 +62,32 @@ data BinaryTree a
 --                 ++ "\n"
 
 
--- A BinaryTree can only have two types of branches: Left or Right
+-- | A BinaryTree can only have two types of branches: Left or Right
 data BranchType
   = LeftBranch
   | RightBranch
   deriving (Show, Eq, Ord)
 
--- Minimum necessary to reconstruct the parent of any focused node. First argument
--- is the @BranchType@ of the focused node relative to the parent. Second argument
--- is the parent's node. The third argument is the sibling tree of the focused
--- node.
+-- | Minimum necessary to reconstruct the parent of any focused node.
 data TreeDirection a = TreeDirection
   { treeDirectionType  :: BranchType
+  -- ^ First argument is the 'BranchType' of the focused node relative to the parent.
   , treeDirectionValue :: a
+  -- ^ Second argument is the parent's node.
   , treeDirectionTree  :: BinaryTree a
+  -- ^ The third argument is the sibling tree of the focused node.
   } deriving (Show, Eq, Ord)
 
--- List of @TreeDirection@
+-- | List of 'TreeDirection'
 type TreeDirections a = [TreeDirection a]
 
--- A @BinaryTree@ zipper. the first value of the tuple is the focused @BinaryTree@,
+-- | A 'BinaryTree' zipper. the first value of the tuple is the focused 'BinaryTree',
 -- while the second argument is the list of directions used to move up to the
 -- parent and other ancestors.
 type TreeZipper a = (BinaryTree a, TreeDirections a)
 
--- Holds the data of a @BinaryTree@ created with the @Branch@ constructor. Useful
--- type when you want to guarantee that the element is not a @Leaf@
+-- | Holds the data of a 'BinaryTree' created with the 'Branch' constructor. Useful
+-- type when you want to guarantee that the element is not a 'Leaf'
 data TreeBranch a = TreeBranch
   { leftBranch  :: BinaryTree a
   , branchValue :: a
@@ -104,28 +104,28 @@ data TreeBranch a = TreeBranch
 --     identation = addSpaces (spaces + 2)
 --     prettyPrintSubtree subtree = prettyPrintTree subtree (spaces + 2) ++ "\n"
 
--- A @TreeBranch@ zipper. It is identical to @TreeZipper@ except for the fact
--- that @Leaf@ values are not allowed in the zipper.
+-- | A 'TreeBranch' zipper. It is identical to 'TreeZipper' except for the fact
+-- that 'Leaf' values are not allowed in the zipper.
 type BranchZipper a = (TreeBranch a, TreeDirections a)
 
--- The result from inserting a node to the left or right of a tree can be:
--- (InsertOk insertedTree directionToNewTree) if there is a leaf at the
--- attempted insert position
--- (InsertNotYet obstructingTree directionToObstructingTree nodeToInsert) if there
--- already is a tree obstructing the desired position, we must go further down
--- InsertMerge the node to insert is equal to the tree's node so they were merged
--- and the tree's size remains the same
+-- | The result from inserting a node to the left or right of a tree can be:
 data TreeInsertResult a
-  = InsertOk
+  = -- | (InsertOk insertedTree directionToNewTree) if there is a leaf at the
+    -- attempted insert position
+    InsertOk
     { insertedTree :: TreeBranch a
     , directionToNewTree :: TreeDirection a
     }
-  | InsertNotYet
+  | -- | (InsertNotYet obstructingTree directionToObstructingTree nodeToInsert) if there
+    -- already is a tree obstructing the desired position, we must go further down
+    InsertNotYet
     { obstructingTree :: BinaryTree a
     , directionToObstructingTree :: TreeDirection a
     , nodeToInsert :: a
     }
-  | InsertMerge
+  | -- | InsertMerge the node to insert is equal to the tree's node so they were merged
+    -- and the tree's size remains the same
+    InsertMerge
     { mergedBranch :: TreeBranch a
     }
   deriving (Show, Eq)
@@ -138,8 +138,8 @@ getTreeContent :: BinaryTree a -> Maybe a
 getTreeContent (Branch TreeBranch{branchValue}) = Just branchValue
 getTreeContent Leaf = Nothing
 
--- Move the zipper down to the left child, returns nothing if focused node is
---  leaf
+-- | Move the zipper down to the left child, returns nothing if focused node is
+-- leaf
 goLeft :: BranchZipper a -> TreeZipper a
 goLeft (TreeBranch{..}, xs) =
   ( leftBranch
@@ -150,7 +150,7 @@ goLeft (TreeBranch{..}, xs) =
     } : xs
   )
 
--- Move the zipper down to the right child, returns nothing if focused node is
+-- | Move the zipper down to the right child, returns nothing if focused node is
 -- a leaf
 goRight :: BranchZipper a -> TreeZipper a
 goRight (TreeBranch{..}, xs) =
@@ -162,7 +162,7 @@ goRight (TreeBranch{..}, xs) =
     } : xs
   )
 
--- get the parent of a branch given the direction from the parent to the branch
+-- | get the parent of a branch given the direction from the parent to the branch
 reconstructAncestor :: TreeBranch a -> TreeDirection a -> TreeBranch a
 reconstructAncestor currentBranch
   TreeDirection
@@ -185,7 +185,7 @@ reconstructAncestor currentBranch
   where
     currentTree = Branch currentBranch
 
--- Move the zipper up to the parent, returns nothing directions list is empty
+-- | Move the zipper up to the parent, returns nothing directions list is empty
 goUp :: BranchZipper a -> Maybe (BranchZipper a)
 goUp (_, []) = Nothing
 goUp (currentBranch, direction:xs) =
@@ -296,14 +296,14 @@ treeZipperInsert (tree, xs) newNode = case tree of
   Branch branch ->
     branchZipperInsert (branch, xs) newNode
 
-  -- | inserts an item to the binary tree. Returns a BranchZipper focusing
-  -- on the recently inserted branch.
+-- | inserts an item to the binary tree. Returns a BranchZipper focusing
+-- on the recently inserted branch.
 binaryTreeInsert :: BinaryTreeNode a => BinaryTree a -> a -> BranchZipper a
 binaryTreeInsert tree = treeZipperInsert treeZipper
   where
     treeZipper = (tree, [])
 
-  -- | Looks up an item in the binary tree. Returns Nothing if it was not found.
+-- | Looks up an item in the binary tree. Returns Nothing if it was not found.
 binaryTreeFind :: Ord a => BinaryTree a -> a -> Maybe a
 binaryTreeFind Leaf _ = Nothing
 binaryTreeFind (Branch TreeBranch{..}) target

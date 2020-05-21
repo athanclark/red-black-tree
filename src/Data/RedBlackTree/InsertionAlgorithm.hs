@@ -1,61 +1,110 @@
+{-# LANGUAGE
+    RecordWildCards
+  #-}
+
 module Data.RedBlackTree.InsertionAlgorithm (
   identifyRBTCase,
   insert,
-  RBTCase (Case1, Case2, Case3, Case4, Case5)
+  RBTCase (..)
 ) where
 
 import Data.RedBlackTree.BinaryTree
+  ( BinaryTreeNode
+  , BinaryTree (..)
+  , TreeBranch (..)
+  , BranchType (..)
+  , TreeDirection (..)
+  , getTreeRoot
+  , binaryTreeInsert
+  , reconstructAncestor
+  )
 import Data.RedBlackTree.TreeFamily
+  ( TreeFamily (..)
+  , getTreeFamily
+  )
 import Data.RedBlackTree.Internal
+  ( WhiteBranch (..)
+  , RedBlackBranch
+  , RedBlackTree
+  , RedBlackNode (..)
+  , RedBlackDirection
+  , RedBlackDirections
+  , RedBlack (..)
+  , removeBranchColor
+  , whiteBranch2Tree
+  , isColor
+  , branchIsColor
+  )
 
--- The 5 possible cases of red–black tree insertion to handle:
--- 1) inserted node is the root node, i.e., first node of red–black tree.
--- Stored as a @WhiteBranch@without because it should always be black.
--- 2) inserted node has a parent, and it is black. The inserted node is stored
--- as a @RedBlackBranch@ along with a @RedBlackDirections@ to reconstruct all of
--- the ancestors
--- 3) inserted node has a parent and an uncle, and they are both red.
--- 4th parameter is the inserted node as a @WhiteBranch@ because it is assumed
--- to be red.
--- 3rd parameter is the uncle as @WhiteBranch@ because it is also
--- assumed to be red.
--- 2nd parameter is the node content of the grandparent.
--- 1st parameter is a @RedBlackDirections@ to reconstruct all of the remaining
--- ancestors
--- 4) inserted node is placed to right of left child of grandparent, or to left
--- of right child of grandparent.
--- 5th parameter is the inserted node as a  @RedBlackBranch@ because it is
--- assumed to be red but we don't care about it right now.
--- 4th parameter is the sibling of the inserted node as a @RedBlackTree@.
--- 3rd parameter is the parent as a @RedBlackNode@.
--- 2nd parameter is a @RedBlackDirection@ used to reconstruct the grandparent.
--- 1st parameter is a @RedBlackDirections@ to reconstruct all of the remaining
--- ancestors
--- 5) inserted node is placed to left of left child of grandparent, or to right
--- of right child of grandparent.
--- 5th parameter is the inserted node as a @RedBlackBranch@ because it is
--- assumed to be red but we don't care about it right now.
--- 4th parameter is the sibling of the inserted node as a @RedBlackTree@.
--- 3rd parameter is content of the parent.
--- 2nd parameter is a @RedBlackDirection@ used to reconstruct the grandparent.
--- 1st parameter is a @RedBlackDirections@ to reconstruct all of the remaining
--- ancestors.
+-- | The 5 possible cases of red–black tree insertion to handle:
 data RBTCase a
-  = Case1 (WhiteBranch a)
-  | Case2 (RedBlackDirections a) (RedBlackBranch a)
-  | Case3 (RedBlackDirections a) a (WhiteBranch a) (WhiteBranch a)
-  | Case4 (RedBlackDirections a) (RedBlackDirection a) (RedBlackNode a)
-    (RedBlackTree a) (RedBlackBranch a)
-  | Case5 (RedBlackDirections a) (RedBlackDirection a) a (RedBlackTree a)
-    (RedBlackBranch a)
+  = -- | 1) inserted node is the root node, i.e., first node of red–black tree.
+    Case1
+    { case1RootBranch :: WhiteBranch a
+      -- ^ Stored as a 'WhiteBranch'without because it should always be black.
+    }
+  | -- | 2) inserted node has a parent, and it is black.
+    Case2
+    { case2Directions :: RedBlackDirections a
+      -- ^ 'RedBlackDirections' to reconstruct all of the ancestors
+    , case2Branch     :: RedBlackBranch a
+      -- ^ The inserted node is stored as a 'RedBlackBranch'
+    }
+  | -- | 3) inserted node has a parent and an uncle, and they are both red.
+    Case3
+    { case3Directions :: RedBlackDirections a
+      -- ^ 1st parameter is a 'RedBlackDirections' to reconstruct all of the remaining
+      -- ancestors
+    , case3GrandparentValue :: a
+      -- ^ 2nd parameter is the node content of the grandparent.
+    , case3Uncle :: WhiteBranch a
+      -- ^ 3rd parameter is the uncle as 'WhiteBranch' because it is also
+      -- assumed to be red.
+    , case3Branch :: WhiteBranch a
+      -- ^ 4th parameter is the inserted node as a 'WhiteBranch' because it is assumed
+      -- to be red.
+    }
+  | -- | 4) inserted node is placed to right of left child of grandparent, or to left
+    -- of right child of grandparent.
+    Case4
+    { case4Directions :: RedBlackDirections a
+      -- ^ 1st parameter is a 'RedBlackDirections' to reconstruct all of the remaining
+      -- ancestors
+    , case4GrandparentDirection :: RedBlackDirection a
+      -- ^ 2nd parameter is a 'RedBlackDirection' used to reconstruct the grandparent.
+    , case4ParentValue :: RedBlackNode a
+      -- ^ 3rd parameter is the parent as a 'RedBlackNode'.
+    , case4Sibling :: RedBlackTree a
+      -- ^ 4th parameter is the sibling of the inserted node as a 'RedBlackTree'.
+    , case4Branch :: RedBlackBranch a
+      -- ^ 5th parameter is the inserted node as a  'RedBlackBranch' because it is
+      -- assumed to be red but we don't care about it right now.
+    }
+  | -- | 5) inserted node is placed to left of left child of grandparent, or to right
+    -- of right child of grandparent.
+    Case5
+    { case5Directions :: RedBlackDirections a
+      -- ^ 1st parameter is a 'RedBlackDirections' to reconstruct all of the remaining
+      -- ancestors.
+    , case5GrandparentDirection :: RedBlackDirection a
+      -- ^ 2nd parameter is a 'RedBlackDirection' used to reconstruct the grandparent.
+    , case5ParentValue :: a
+      -- ^ 3rd parameter is content of the parent.
+    , case5Sibling :: RedBlackTree a
+      -- ^ 4th parameter is the sibling of the inserted node as a 'RedBlackTree'.
+    , case5Branch :: RedBlackBranch a
+      -- ^ 5th parameter is the inserted node as a 'RedBlackBranch' because it is
+      -- assumed to be red but we don't care about it right now.
+    }
   deriving (Eq, Ord, Show)
 
-identifyCases345 :: (BinaryTreeNode a) => RedBlackDirections a ->
-  RedBlackDirection a -> RedBlackDirection a -> RedBlackBranch a -> RBTCase a
+
+identifyCases345 :: BinaryTreeNode a => RedBlackDirections a -> RedBlackDirection a -> RedBlackDirection a -> RedBlackBranch a -> RBTCase a
 identifyCases345 directions
   (TreeDirection grandparentBranchType grandparentNode
   (Branch (TreeBranch leftCousin (RedBlackNode Red uncleContent) rightCousin)))
-  parentDirection newBranch =
+  parentDirection
+  newBranch =
     case grandparentBranchType of
       LeftBranch ->
         Case3 directions grandparentContent whiteParent whiteUncle
@@ -78,6 +127,7 @@ identifyCases345 directions grandparentDirection parentDirection newBranch
         TreeDirection parentBranchType parentNode siblingTree = parentDirection
         RedBlackNode _ parentContent =  parentNode
 
+
 identifyRBTCase :: (BinaryTreeNode a) => TreeFamily (RedBlackNode a) ->
   RBTCase a
 identifyRBTCase (IsRoot rootBranch) = Case1 (removeBranchColor rootBranch)
@@ -96,100 +146,89 @@ identifyRBTCase (HasGrandparent directions grandparentDirection
         TreeBranch _ parentContent _ = parentBranch
         TreeBranch _ grandparentContent _ = grandparentBranch
 
-handleRBTCase1 :: (BinaryTreeNode a) => WhiteBranch a -> RedBlackTree a
-handleRBTCase1 whiteRoot = Branch (TreeBranch leftChild rootNode rightChild)
-  where WhiteBranch leftChild content rightChild = whiteRoot
-        rootNode = RedBlackNode Black content
 
-handleRBTCase2 :: (BinaryTreeNode a) => RedBlackDirections a -> RedBlackBranch a
-  -> RedBlackTree a
-handleRBTCase2 directionsFromRoot newBranch = Branch rootBranch
-  where branchZipper = (newBranch, directionsFromRoot)
-        (rootBranch, _) = getTreeRoot branchZipper
 
-handleRBTCase3 :: (BinaryTreeNode a) => RedBlackDirections a -> a ->
-  WhiteBranch a -> WhiteBranch a -> RedBlackTree a
-handleRBTCase3 directionsFromRoot grandparentContent leftWBranch rightWBranch =
-  (handleRBTCase . identifyRBTCase . getTreeFamily) repaintedGrandparentZipper
-  where newLeftChild = whiteBranch2Tree leftWBranch Black
-        newRightChild = whiteBranch2Tree rightWBranch Black
-        newNode = RedBlackNode Red grandparentContent
-        newBranch = TreeBranch newLeftChild newNode newRightChild
-        repaintedGrandparentZipper = (newBranch, directionsFromRoot)
 
-handleRBTCase4 :: (BinaryTreeNode a) =>
-  RedBlackDirections a ->
-  RedBlackDirection a ->
-  RedBlackNode a ->
-  RedBlackTree a ->
-  RedBlackBranch a ->
-  RedBlackTree a
-handleRBTCase4 directions grandparentDirection parentNode siblingTree
-  latestBranch =
-  handleRBTCase (Case5 directions grandparentDirection newParentContent
-  newSiblingTree newLatestBranch)
-  where TreeBranch latestLeftTree (RedBlackNode _ childContent)
-          latestRightTree = latestBranch
-        TreeDirection grandparentDirectionType _ _ = grandparentDirection
-        newParentContent = childContent
-        newLatestNode = parentNode
-        newLatestBranch = if grandparentDirectionType == LeftBranch then
-          TreeBranch siblingTree newLatestNode latestLeftTree else
-          TreeBranch latestRightTree newLatestNode siblingTree
-        newSiblingTree = if grandparentDirectionType == LeftBranch then
-          latestRightTree else latestLeftTree
-
-handleRBTCase5 :: (BinaryTreeNode a) =>
-  RedBlackDirections a ->
-  RedBlackDirection a ->
-  a ->
-  RedBlackTree a ->
-  RedBlackBranch a ->
-  RedBlackTree a
-handleRBTCase5 directions grandparentDirection parentContent
-  siblingTree latestBranch =
-  Branch postRotationRootBranch
-  where TreeDirection grandparentDirectionType grandparentNode uncleTree =
-          grandparentDirection
-        RedBlackNode _ grandparentContent = grandparentNode
-        newTopNode = RedBlackNode Black parentContent
-        rotatedGrandparentNode = RedBlackNode Red grandparentContent
-        latestTree = Branch latestBranch
-        needsRightRotation = grandparentDirectionType == LeftBranch
-        newSiblingTree = if needsRightRotation
-          then Branch (TreeBranch siblingTree rotatedGrandparentNode uncleTree)
-          else Branch (TreeBranch uncleTree rotatedGrandparentNode siblingTree)
-        rotatedBranch = if needsRightRotation
-          then TreeBranch latestTree newTopNode newSiblingTree
-          else TreeBranch newSiblingTree newTopNode latestTree
-        rotatedBranchZipper = (rotatedBranch, directions)
-        (postRotationRootBranch, _) = getTreeRoot rotatedBranchZipper
 
 handleRBTCase :: (BinaryTreeNode a) => RBTCase a -> RedBlackTree a
-handleRBTCase (Case1 whiteRoot) = handleRBTCase1 whiteRoot
+handleRBTCase (Case1 WhiteBranch{..}) =
+  Branch TreeBranch
+    { leftBranch = leftWhiteBranch
+    , rightBranch = rightWhiteBranch
+    , branchValue = RedBlackNode{nodeColor = Black, content = whiteBranchValue}
+    }
 handleRBTCase (Case2 directionsFromRoot newBranch) =
-  handleRBTCase2 directionsFromRoot newBranch
-handleRBTCase (Case3 directionsFromRoot content leftWBranch rightWBranch) =
-  handleRBTCase3 directionsFromRoot content leftWBranch rightWBranch
-handleRBTCase (Case4 directions grandparentDirection parentNode siblingTree
-  latestBranch) =
-    handleRBTCase4 directions grandparentDirection parentNode siblingTree
-  latestBranch
-handleRBTCase (Case5 directions grandparentDirection parentContent
-  siblingTree latestBranch) =
-    handleRBTCase5 directions grandparentDirection parentContent
-  siblingTree latestBranch
+  Branch rootBranch
+  where
+    (rootBranch, _) = getTreeRoot (newBranch, directionsFromRoot)
+handleRBTCase
+  Case3
+  { case3Directions = directionsFromRoot
+  , case3GrandparentValue = grandparentContent
+  , case3Uncle = leftWBranch
+  , case3Branch = rightWBranch
+  } =
+  handleRBTCase . identifyRBTCase . getTreeFamily $ repaintedGrandparentZipper
+  where
+    newBranch = TreeBranch
+      { leftBranch = whiteBranch2Tree leftWBranch Black
+      , rightBranch = whiteBranch2Tree rightWBranch Black
+      , branchValue =
+          RedBlackNode
+            { nodeColor = Red
+            , content = grandparentContent
+            }
+      }
+    repaintedGrandparentZipper = (newBranch, directionsFromRoot)
+handleRBTCase
+  Case4
+  { case4Directions = directions
+  , case4GrandparentDirection = grandparentDirection@(TreeDirection grandparentDirectionType _ _)
+  , case4ParentValue = newLatestNode
+  , case4Sibling = siblingTree
+  , case4Branch = TreeBranch latestLeftTree (RedBlackNode _ newParentContent) latestRightTree
+  } =
+  handleRBTCase (Case5 directions grandparentDirection newParentContent newSiblingTree newLatestBranch)
+  where
+    newLatestBranch = case grandparentDirectionType of
+      LeftBranch -> TreeBranch siblingTree newLatestNode latestLeftTree
+      RightBranch -> TreeBranch latestRightTree newLatestNode siblingTree
+    newSiblingTree = case grandparentDirectionType of
+      LeftBranch -> latestRightTree
+      RightBranch -> latestLeftTree
+handleRBTCase
+  Case5
+  { case5Directions = directions
+  , case5GrandparentDirection = TreeDirection grandparentDirectionType (RedBlackNode _ grandparentContent) uncleTree
+  , case5ParentValue = parentContent
+  , case5Sibling = siblingTree
+  , case5Branch = latestBranch
+  } =
+  Branch postRotationRootBranch
+  where
+    newTopNode = RedBlackNode Black parentContent
+    rotatedGrandparentNode = RedBlackNode Red grandparentContent
+    latestTree = Branch latestBranch
+    needsRightRotation = grandparentDirectionType == LeftBranch
+    newSiblingTree = if needsRightRotation
+      then Branch (TreeBranch siblingTree rotatedGrandparentNode uncleTree)
+      else Branch (TreeBranch uncleTree rotatedGrandparentNode siblingTree)
+    rotatedBranch = if needsRightRotation
+      then TreeBranch latestTree newTopNode newSiblingTree
+      else TreeBranch newSiblingTree newTopNode latestTree
+    (postRotationRootBranch, _) = getTreeRoot (rotatedBranch, directions)
+
 
 -- | inserts a new node to the tree, performing the necessary rotations to
 -- guarantee that the red black properties are kept after the insertion.
 insert :: (BinaryTreeNode a) => RedBlackTree a -> a -> RedBlackTree a
-insert tree newItem = if insertedNode `isColor` Black
-                      then newTreeWithNewItem
-                      else (handleRBTCase . identifyRBTCase) insertedTreeFamily
-  where newNode = RedBlackNode Red newItem
-        (insertedTreeBranch, directions) = binaryTreeInsert tree newNode
-        TreeBranch _ insertedNode _ = insertedTreeBranch
-        insertedBranchZipper = (insertedTreeBranch, directions)
-        (rootBranch, _) = getTreeRoot insertedBranchZipper
-        newTreeWithNewItem = Branch rootBranch
-        insertedTreeFamily = getTreeFamily insertedBranchZipper
+insert tree newItem = case insertedNodeColor of
+  Black ->
+    let (rootBranch, _) = getTreeRoot insertedBranchZipper
+    in  Branch rootBranch
+  Red ->
+    handleRBTCase (identifyRBTCase (getTreeFamily insertedBranchZipper))
+  where
+    insertedBranchZipper@
+      (TreeBranch{branchValue = RedBlackNode{nodeColor=insertedNodeColor}},_) =
+        binaryTreeInsert tree RedBlackNode{nodeColor=Red,content=newItem}
