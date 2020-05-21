@@ -4,14 +4,14 @@
   #-}
 
 module Data.RedBlackTree.BinaryTree (
-  BinaryTreeNode (mergeNodes),
-  BinaryTree (Leaf, Branch),
-  BranchType (LeftBranch, RightBranch),
+  BinaryTreeNode (..),
+  BinaryTree (..),
+  BranchType (..),
   BranchZipper,
-  TreeBranch (TreeBranch),
-  TreeDirection (TreeDirection),
+  TreeBranch (..),
+  TreeDirection (..),
   TreeDirections,
-  TreeInsertResult (InsertOk, InsertNotYet, InsertMerge),
+  TreeInsertResult (..),
   TreeZipper,
 
   appendLeftChild,
@@ -26,7 +26,6 @@ module Data.RedBlackTree.BinaryTree (
   reconstructAncestor
   ) where
 
-import Data.Maybe
 
 
 -- Only types that are members of @BinaryTreeNode@ can be inserted into a
@@ -305,7 +304,7 @@ binaryTreeInsert tree = treeZipperInsert treeZipper
     treeZipper = (tree, [])
 
   -- | Looks up an item in the binary tree. Returns Nothing if it was not found.
-binaryTreeFind :: BinaryTreeNode a => BinaryTree a -> a -> Maybe a
+binaryTreeFind :: Ord a => BinaryTree a -> a -> Maybe a
 binaryTreeFind Leaf _ = Nothing
 binaryTreeFind (Branch TreeBranch{..}) target
   | target == branchValue = Just branchValue

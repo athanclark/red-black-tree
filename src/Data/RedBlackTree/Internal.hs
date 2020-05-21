@@ -1,3 +1,8 @@
+{-# LANGUAGE
+    NamedFieldPuns
+  , RecordWildCards
+  #-}
+
 module Data.RedBlackTree.Internal (
   branchIsColor,
   getBlackHeight,
@@ -8,32 +13,44 @@ module Data.RedBlackTree.Internal (
   removeBranchColor,
   whiteBranch2Tree,
 
-  RedBlack (Red, Black),
-  RedBlackNode (RedBlackNode),
+  RedBlack (..),
+  RedBlackNode (..),
   RedBlackBranch,
   RedBlackTree,
   RedBlackDirection,
   RedBlackDirections,
-  WhiteBranch (WhiteBranch)
+  WhiteBranch (..)
 ) where
 
 import Data.RedBlackTree.BinaryTree
+  ( BinaryTreeNode (mergeNodes)
+  , BinaryTree (..)
+  , TreeBranch (..)
+  , TreeDirection (..)
+  , binaryTreeFind
+  )
 
 -- | Red black trees can only have two types of nodes: Red and Black
 data RedBlack = Red | Black deriving (Show, Eq, Ord)
 
 -- | a @RedBlackNode@ contains only two elements, the color of the node and the
 -- actual content.
-data RedBlackNode a = RedBlackNode {
-  nodeColor :: RedBlack,
-  content :: a
-} deriving (Show)
+data RedBlackNode a = RedBlackNode
+  { nodeColor :: RedBlack
+  , content :: a
+  } deriving (Show)
 
 instance (BinaryTreeNode a) => BinaryTreeNode (RedBlackNode a)  where
-  mergeNodes leftNode rightNode = RedBlackNode color mergedContent
-    where RedBlackNode color leftContent = leftNode
-          RedBlackNode _ rightContent = rightNode
-          mergedContent = leftContent `mergeNodes` rightContent
+  mergeNodes
+    RedBlackNode
+    { nodeColor
+    , content = leftContent
+    }
+    RedBlackNode
+    { content = rightContent
+    } = RedBlackNode { nodeColor, content = mergedContent }
+    where
+      mergedContent = leftContent `mergeNodes` rightContent
 
 instance (BinaryTreeNode a) => Ord (RedBlackNode a) where
   (RedBlackNode _ lcontent) <= (RedBlackNode _ rcontent) =
@@ -65,51 +82,58 @@ type RedBlackDirections a = [ RedBlackDirection a ]
 
 -- Holds all the data of a @RedBlackBranch@ except for the color of the node
 -- at the top of the branch
-data WhiteBranch a = WhiteBranch (RedBlackTree a) a (RedBlackTree a)
-  deriving (Eq, Ord, Show)
+data WhiteBranch a = WhiteBranch
+  { leftWhiteBranch  :: RedBlackTree a
+  , whiteBranchValue :: a
+  , rightWhiteBranch :: RedBlackTree a
+  } deriving (Eq, Ord, Show)
 
 
-isColor :: (BinaryTreeNode a) => RedBlackNode a -> RedBlack -> Bool
-isColor (RedBlackNode color _) expectedColor = color == expectedColor
+isColor :: RedBlackNode a -> RedBlack -> Bool
+isColor RedBlackNode{nodeColor} expectedColor = nodeColor == expectedColor
 
-branchIsColor :: (BinaryTreeNode a) => TreeBranch (RedBlackNode a) -> RedBlack
-  -> Bool
-branchIsColor (TreeBranch leftChild node rightChild) = isColor node
+branchIsColor :: TreeBranch (RedBlackNode a) -> RedBlack -> Bool
+branchIsColor TreeBranch{branchValue} = isColor branchValue
 
-treeIsColor :: (BinaryTreeNode a) => RedBlackTree a -> RedBlack -> Bool
-treeIsColor Leaf expectedColor = expectedColor == Black
-treeIsColor (Branch (TreeBranch leftChild node rightChild)) expectedColor =
-  isColor node expectedColor
+treeIsColor :: RedBlackTree a -> RedBlack -> Bool
+treeIsColor tree expectedColor = case tree of
+  Leaf -> expectedColor == Black
+  Branch TreeBranch{branchValue} -> isColor branchValue expectedColor
 
-paintItBlack :: (BinaryTreeNode a) => RedBlackNode a -> RedBlackNode a
-paintItBlack (RedBlackNode _ item) = RedBlackNode Black item
+paintItBlack :: RedBlackNode a -> RedBlackNode a
+paintItBlack node = node{nodeColor=Black}
 
-removeBranchColor :: (BinaryTreeNode a) => RedBlackBranch a -> WhiteBranch a
-removeBranchColor (TreeBranch leftChild (RedBlackNode _ content) rightChild) =
-  WhiteBranch leftChild content rightChild
+removeBranchColor :: RedBlackBranch a -> WhiteBranch a
+removeBranchColor TreeBranch{leftBranch,rightBranch,branchValue = RedBlackNode{content}} =
+  WhiteBranch
+  { leftWhiteBranch = leftBranch
+  , rightWhiteBranch = rightBranch
+  , whiteBranchValue = content
+  }
 
-whiteBranch2Tree :: (BinaryTreeNode a) => WhiteBranch a -> RedBlack ->
-  RedBlackTree a
-whiteBranch2Tree (WhiteBranch leftChild content rightChild) color =
-  Branch (TreeBranch leftChild newNode rightChild)
-  where newNode = RedBlackNode color content
+whiteBranch2Tree :: WhiteBranch a -> RedBlack -> RedBlackTree a
+whiteBranch2Tree WhiteBranch{..} nodeColor =
+  Branch $
+    TreeBranch
+    { leftBranch = leftWhiteBranch
+    , rightBranch = rightWhiteBranch
+    , branchValue
+    }
+  where
+    branchValue = RedBlackNode{nodeColor,content = whiteBranchValue}
 
-getBlackHeight :: (BinaryTreeNode a) => RedBlackTree a -> Int
-getBlackHeight Leaf = 1
-getBlackHeight (Branch (TreeBranch _ (RedBlackNode Black _) rightSubtree)) =
-  1 + getBlackHeight rightSubtree
-getBlackHeight (Branch (TreeBranch _ (RedBlackNode Red _) rightSubtree)) =
-  getBlackHeight rightSubtree
-
-getNodeContent :: (BinaryTreeNode a) => RedBlackNode a -> a
-getNodeContent (RedBlackNode _ content) = content
+getBlackHeight :: RedBlackTree a -> Int
+getBlackHeight tree = case tree of
+  Leaf -> 1
+  Branch TreeBranch{rightBranch,branchValue = RedBlackNode{nodeColor}} -> case nodeColor of
+    Black -> 1 + getBlackHeight rightBranch
+    Red -> getBlackHeight rightBranch
 
 -- | Lookup a target node in the tree. The target value doesn't need to be the
 -- exact same value that is already in the tree. It only needs to satisfy the
 -- @Eq@ instance
-find :: (BinaryTreeNode a) => RedBlackTree a -> a -> Maybe a
-find redBlackTree target = fmap getNodeContent maybeResult
-  where maybeResult = binaryTreeFind redBlackTree (RedBlackNode Black target)
+find :: Ord a => RedBlackTree a -> a -> Maybe a
+find tree target = fmap content (binaryTreeFind tree RedBlackNode{nodeColor=Black,content=target})
 
 -- | Convenient function to "create" a new empty tree.
 emptyRedBlackTree :: RedBlackTree a
